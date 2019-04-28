@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -19,6 +20,7 @@ namespace http_server
         private string host;
         private int port;
         private int backlog;
+        private readonly string PROTOCOL_VERSION = "HTTP1.1";
         public HttpServer(string host, int port, int backlog)
         {
             this.host = host;
@@ -35,19 +37,36 @@ namespace http_server
             listener.Listen(this.backlog);
 
             Console.WriteLine("Accepting connections at " + endPoint.ToString());
-
             while (true)
             {
                 Socket handler = listener.Accept();
                 Connection conn = new Connection(handler);
                 Request request = Request.ReadFrom(conn);
-                Console.WriteLine(request.method + " " + request.path + " " + request.headers);
-
-                byte[] msg = Encoding.ASCII.GetBytes("HTTP1.1 200 Ok");
-                handler.Send(msg);
+                byte[] response = this.Process(request);
+                handler.Send(response);
                 handler.Shutdown(SocketShutdown.Both);
                 handler.Close();
             }
+        }
+
+        private byte[] Process(Request req)
+        {
+            string response = string.Empty;
+            string path = Directory.GetCurrentDirectory() + req.path;
+            if (File.Exists(path))
+            {
+                string content = File.ReadAllText(path);
+                response = string.Format("{0} 200 Ok\r\n", this.PROTOCOL_VERSION);
+                response += "Content-Type: text/html; charset=us-ascii\r\n";
+                response += "Content-Length: " + content.Length + "\r\n\r\n";
+                response += content;
+            }
+            else
+            {
+                response = string.Format("{0} 404 NotFound\r\n\r\n", this.PROTOCOL_VERSION);
+            }
+
+            return Encoding.ASCII.GetBytes(response);
         }
     }
 
