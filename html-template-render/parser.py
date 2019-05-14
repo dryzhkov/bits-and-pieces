@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""This module converts templates to HTML
+"""This module converts templates to raw HTML
 
     Example:
         Source:
@@ -37,18 +37,27 @@ class Node:
     def __repr__(self):
         return 'node(' + repr(self.type) + ', ' + repr(self.content) + ', ' + repr(self.indent) + ') has ' + str(len(self.children)) + ' children'
 
-    def getHTML(self):
+    def getHTML(self, isClosing):
         if self.type == "text":
             return self.content
         elif self.type == "code":
-            return self.content
+            return "{" + self.content + "}"
+        elif isClosing == True:
+            return "</{}>".format(self.content)
         else:
             return "<{}>".format(self.content)
 
     def toHTML(self):
-        pp(' ' * self.indent * 4 + self.getHTML())
+        indentStr = ' ' * self.indent * 4
+        out = '{}{}\n'.format(indentStr, self.getHTML(False))
+
         for child in self.children:
-            child.toHTML()
+            out += child.toHTML()
+
+        if self.type == 'element':
+            out += '{}{}\n'.format(indentStr, self.getHTML(True))
+
+        return out
 
 
 template = r"""
@@ -57,12 +66,22 @@ div
         : Username
     p
         | username_variable
+    div
+        : Some interesting text
+    div
+        ul
+            li
+                : link1
+            li
+                : link2
+            li
+                : link3
+                | some_variable
 """
 
 
 def render(tmpl):
     tokens = tokenize(tmpl)
-    pp(tokens)
     tree = parse(tokens)
     html = tree.toHTML()
     return html
@@ -91,7 +110,6 @@ def parse(tokens):
     depthToParent = {0: root}
     for node in tokens:
         parent = depthToParent[node.indent - 1]
-        pp(parent)
         parent.children.append(node)
         depthToParent[node.indent] = node
 
@@ -99,4 +117,4 @@ def parse(tokens):
 
 
 htmlOut = render(template)
-pp(htmlOut)
+print(htmlOut)
