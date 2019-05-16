@@ -47,12 +47,12 @@ class Node:
         else:
             return "<{}>".format(self.content)
 
-    def toHTML(self):
+    def render(self, params):
         indentStr = ' ' * self.indent * 4
         out = '{}{}\n'.format(indentStr, self.getHTML(False))
 
         for child in self.children:
-            out += child.toHTML()
+            out += child.render(params)
 
         if self.type == 'element':
             out += '{}{}\n'.format(indentStr, self.getHTML(True))
@@ -60,61 +60,39 @@ class Node:
         return out
 
 
-template = r"""
-div
-    p
-        : Username
-    p
-        | username_variable
-    div
-        : Some interesting text
-    div
-        ul
-            li
-                : link1
-            li
-                : link2
-            li
-                : link3
-                | some_variable
-"""
+class Template:
+    def __init__(self, content):
+        self.content = content
 
+    def render(self, params):
+        tokens = self.__tokenize(self.content)
+        tree = self.__parse(tokens)
+        html = tree.render(params)
+        return html
 
-def render(tmpl):
-    tokens = tokenize(tmpl)
-    tree = parse(tokens)
-    html = tree.toHTML()
-    return html
+    def __tokenize(self, content):
+        nodes = []
+        lines = list(filter(lambda x: x != "", content.split('\n')))
+        for line in lines:
+            m = re.match('( *)(.*)', line)
+            spaces, data = m.group(1), m.group(2)
+            indent = len(spaces) // 4
 
+            if data.startswith(': '):
+                nodes.append(Node("text", data[2:], indent))
+            elif data.startswith('| '):
+                nodes.append(Node('code', data[2:], indent))
+            else:
+                nodes.append(Node('element', data, indent))
 
-def tokenize(tmpl):
-    nodes = []
-    lines = list(filter(lambda x: x != "", tmpl.split('\n')))
-    for line in lines:
-        m = re.match('( *)(.*)', line)
-        spaces, data = m.group(1), m.group(2)
-        indent = len(spaces) // 4
+        return nodes
 
-        if data.startswith(': '):
-            nodes.append(Node("text", data[2:], indent))
-        elif data.startswith('| '):
-            nodes.append(Node('code', data[2:], indent))
-        else:
-            nodes.append(Node('element', data, indent))
+    def __parse(self, tokens):
+        root = tokens.pop(0)
+        depthToParent = {0: root}
+        for node in tokens:
+            parent = depthToParent[node.indent - 1]
+            parent.children.append(node)
+            depthToParent[node.indent] = node
 
-    return nodes
-
-
-def parse(tokens):
-    root = tokens.pop(0)
-    depthToParent = {0: root}
-    for node in tokens:
-        parent = depthToParent[node.indent - 1]
-        parent.children.append(node)
-        depthToParent[node.indent] = node
-
-    return root
-
-
-htmlOut = render(template)
-print(htmlOut)
+        return root
