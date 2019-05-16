@@ -8,9 +8,9 @@ class TestStringMethods(unittest.TestCase):
         content = r"""
 div
     p
-        : Username
+        : Email
     p
-        | username_variable
+        | email
     div
         : Some interesting text
     div
@@ -21,16 +21,15 @@ div
                 : link2
             li
                 : link3
-                | some_variable
 """
         template = Template(content)
-        actual = template.render(None)
+        actual = template.render({'email': 'bob@example.com'})
         expected = r"""<div>
     <p>
-        Username
+        Email
     </p>
     <p>
-        {username_variable}
+        bob@example.com
     </p>
     <div>
         Some interesting text
@@ -45,7 +44,6 @@ div
             </li>
             <li>
                 link3
-                {some_variable}
             </li>
         </ul>
     </div>

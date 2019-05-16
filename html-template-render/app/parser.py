@@ -35,15 +35,15 @@ class Node:
     def __repr__(self):
         return 'node(' + repr(self.content) + ', ' + repr(self.indent) + ') has ' + str(len(self.children)) + ' children'
 
-    def getHTML(self, isClosing):
+    def getHTML(self, isClosing, params):
         pass
 
     def render(self, params):
-        return '{}{}\n'.format(' ' * self.indent * 4, self.getHTML(False))
+        return '{}{}\n'.format(' ' * self.indent * 4, self.getHTML(False, params))
 
 
 class TagNode(Node):
-    def getHTML(self, isClosing):
+    def getHTML(self, isClosing, params):
         if isClosing == True:
             return "</{}>".format(self.content)
         else:
@@ -55,13 +55,14 @@ class TagNode(Node):
         for child in self.children:
             out += child.render(params)
 
-        out += '{}{}\n'.format(' ' * self.indent * 4, self.getHTML(True))
+        out += '{}{}\n'.format(' ' * self.indent * 4,
+                               self.getHTML(True, params))
 
         return out
 
 
 class TextNode(Node):
-    def getHTML(self, isClosing):
+    def getHTML(self, isClosing, params):
         return self.content
 
     def render(self, params):
@@ -69,8 +70,8 @@ class TextNode(Node):
 
 
 class CodeNode(Node):
-    def getHTML(self, isClosing):
-        return "{" + self.content + "}"
+    def getHTML(self, isClosing, params):
+        return str(eval(self.content, params))
 
     def render(self, params):
         return super(CodeNode, self).render(params)
