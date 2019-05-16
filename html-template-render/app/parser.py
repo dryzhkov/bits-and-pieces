@@ -27,37 +27,53 @@ import re
 
 
 class Node:
-
-    def __init__(self, type, content, indent):
-        self.type = type
+    def __init__(self, content, indent):
         self.content = content
         self.indent = indent
         self.children = []
 
     def __repr__(self):
-        return 'node(' + repr(self.type) + ', ' + repr(self.content) + ', ' + repr(self.indent) + ') has ' + str(len(self.children)) + ' children'
+        return 'node(' + repr(self.content) + ', ' + repr(self.indent) + ') has ' + str(len(self.children)) + ' children'
 
     def getHTML(self, isClosing):
-        if self.type == "text":
-            return self.content
-        elif self.type == "code":
-            return "{" + self.content + "}"
-        elif isClosing == True:
+        pass
+
+    def render(self, params):
+        return '{}{}\n'.format(' ' * self.indent * 4, self.getHTML(False))
+
+
+class TagNode(Node):
+    def getHTML(self, isClosing):
+        if isClosing == True:
             return "</{}>".format(self.content)
         else:
             return "<{}>".format(self.content)
 
     def render(self, params):
-        indentStr = ' ' * self.indent * 4
-        out = '{}{}\n'.format(indentStr, self.getHTML(False))
+        out = super(TagNode, self).render(params)
 
         for child in self.children:
             out += child.render(params)
 
-        if self.type == 'element':
-            out += '{}{}\n'.format(indentStr, self.getHTML(True))
+        out += '{}{}\n'.format(' ' * self.indent * 4, self.getHTML(True))
 
         return out
+
+
+class TextNode(Node):
+    def getHTML(self, isClosing):
+        return self.content
+
+    def render(self, params):
+        return super(TextNode, self).render(params)
+
+
+class CodeNode(Node):
+    def getHTML(self, isClosing):
+        return "{" + self.content + "}"
+
+    def render(self, params):
+        return super(CodeNode, self).render(params)
 
 
 class Template:
@@ -79,11 +95,11 @@ class Template:
             indent = len(spaces) // 4
 
             if data.startswith(': '):
-                nodes.append(Node("text", data[2:], indent))
+                nodes.append(TextNode(data[2:], indent))
             elif data.startswith('| '):
-                nodes.append(Node('code', data[2:], indent))
+                nodes.append(CodeNode(data[2:], indent))
             else:
-                nodes.append(Node('element', data, indent))
+                nodes.append(TagNode(data, indent))
 
         return nodes
 
