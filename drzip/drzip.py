@@ -2,6 +2,7 @@
 import argparse
 import sys
 from operator import attrgetter
+from bin import Packer
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--compress', action='store_true', help='to compress data')
@@ -29,15 +30,38 @@ class Node:
         if self.right != None:
             self.right.print()
 
+
 def compress(original):
     huff_tree = build_tree(original)
-    # huff_tree.print()
     bits_table = {}
     build_table(huff_tree, bits_table)
-    print(bits_table)
+    packer = Packer()
+    packer.int32(len(original)) # pack length of original data as first 32 bits
+    pack_table(bits_table, packer)
+    pack_original(original, packer, bits_table)
+    packer.print()
+    return packer.pack()
+
+
+def pack_table(table, packer):
+    packer.int8(len(table)) #pack length of lookup table as frist 8 bits
+    for byte, path in table.items():
+        packer.int8(byte)
+        packer.int8(len(path))
+        packer.addBits(path)
+
+
+def pack_original(data, packer, lookup):
+    for byte in data:
+        if byte in lookup:
+            packer.addBits(lookup[byte])
+        else:
+            raise Exception("byte not found in lookup table")
+
 
 def decompress(compressed):
     print(compressed)
+
 
 def build_tree(data):
     count_map = {}
@@ -64,6 +88,7 @@ def build_tree(data):
     
     return counter_list.pop()
 
+
 def build_table(node, table, path = []):
     if node.left == None and node.right == None: # left
         table[node.byte] = path
@@ -76,6 +101,6 @@ if __name__ == "__main__":
     d = vars(args)["decompress"]
 
     if c == True:
-        compress(bytes(sys.stdin.read(), "utf-8"))
+        print(compress(bytes(sys.stdin.read(), "utf-8")))
     else:
         decompress(bytes(sys.stdin.read(), "utf-8"))
