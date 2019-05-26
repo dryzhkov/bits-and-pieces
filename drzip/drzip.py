@@ -66,7 +66,7 @@ def build_tree(data):
 
 def build_table(node, table, path = []):
     if node.left == None and node.right == None: # left
-        table[node] = path
+        table[node.byte] = path
     else:
         build_table(node.left, table, path + [0])
         build_table(node.right, table, path + [1])
