@@ -11,7 +11,7 @@ args = parser.parse_args()
 
 class Node:
 
-    def __init__(self, byte, count):
+    def __init__(self, count, byte=-1):
         self.left = None
         self.right = None
         self.byte = byte
@@ -31,7 +31,10 @@ class Node:
 
 def compress(original):
     huff_tree = build_tree(original)
-
+    # huff_tree.print()
+    bits_table = {}
+    build_table(huff_tree, bits_table)
+    print(bits_table)
 
 def decompress(compressed):
     print(compressed)
@@ -45,8 +48,7 @@ def build_tree(data):
         else:
             count_map[byte] = 1
     
-    counter_list = [Node(k, v) for k, v in count_map.items()]
-    print(counter_list)
+    counter_list = [Node(v, k) for k, v in count_map.items()]
     
     while len(counter_list) > 1:
         min_left = min(counter_list, key=attrgetter('count'))
@@ -54,19 +56,20 @@ def build_tree(data):
         min_right = min(counter_list, key=attrgetter('count'))
         counter_list.remove(min_right)
 
-        parent = Node(-1, min_left.count + min_right.count)
+        parent = Node(min_left.count + min_right.count)
         parent.left = min_left
         parent.right = min_right
 
         counter_list.append(parent)
-
-        print(counter_list)
     
-    root = counter_list.pop()
+    return counter_list.pop()
 
-    root.PrintTree()
-
-    return root
+def build_table(node, table, path = []):
+    if node.left == None and node.right == None: # left
+        table[node] = path
+    else:
+        build_table(node.left, table, path + [0])
+        build_table(node.right, table, path + [1])
 
 if __name__ == "__main__":
     c = vars(args)["compress"]
