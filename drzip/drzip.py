@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""Uses Huffman Coding Algorithm to compress and decompress data.
+Compressed data format:
+    1. 32 bits - length of original content
+    2. 8 bits - number of enteries in look up table
+    3. N bits - look up table <byte, path_to_byte>, for every entry:
+            3.1 8 bits - byte representing ascii char
+            3.2 8 bits - length of path_to_byte
+            3.3 N bits - path_to_byte
+    4. N bits - path_to_byte for every char in original data
+"""
 import argparse
 import sys
 from operator import attrgetter
@@ -32,26 +42,30 @@ class Node:
             self.right.print()
 
 
-"""Uses Huffman Coding Algorithm to compress data.
-Compress data format:
-    - first 32 bits - length of original content
-    - 
-"""
-
-
 def compress(original):
-    huff_tree = build_tree(original)
+    huff_tree = _build_tree(original)
     bits_table = {}
-    build_table(huff_tree, bits_table)
+    _build_table(huff_tree, bits_table)
     packer = Packer()
-    # pack length of original data as first 32 bits
     packer.int32(len(original))
-    pack_table(bits_table, packer)
-    pack_original(original, packer, bits_table)
+    _pack_table(bits_table, packer)
+    _pack_original(original, packer, bits_table)
     return packer.pack()
 
 
-def pack_table(table, packer):
+def decompress(compressed):
+    unpacker = Unpacker(compressed)
+    data_len = unpacker.int32()
+    lookup_table = _unpack_table(unpacker)
+    res = ""
+    while data_len > 0:
+        data_len -= 1
+        byte = _lookup_bits(lookup_table, unpacker)
+        res += chr(byte)
+    return res
+
+
+def _pack_table(table, packer):
     packer.int8(len(table))  # pack length of lookup table as frist 8 bits
     for byte, path in table.items():
         packer.int8(byte)
@@ -59,7 +73,7 @@ def pack_table(table, packer):
         packer.addBits(path)
 
 
-def pack_original(data, packer, lookup):
+def _pack_original(data, packer, lookup):
     for byte in data:
         if byte in lookup:
             packer.addBits(lookup[byte])
@@ -67,7 +81,7 @@ def pack_original(data, packer, lookup):
             raise Exception("byte not found in lookup table")
 
 
-def unpack_table(unpacker):
+def _unpack_table(unpacker):
     table_len = unpacker.int8()
     table = {}
     i = 0
@@ -81,19 +95,7 @@ def unpack_table(unpacker):
     return table
 
 
-def decompress(compressed):
-    unpacker = Unpacker(compressed)
-    data_len = unpacker.int32()
-    lookup_table = unpack_table(unpacker)
-    res = ""
-    while data_len > 0:
-        data_len -= 1
-        byte = lookup_bits(lookup_table, unpacker)
-        res += chr(byte)
-    return res
-
-
-def lookup_bits(table, unpacker):
+def _lookup_bits(table, unpacker):
     for (byte, path) in table.items():
         if unpacker.seek(len(path)) == path:
             unpacker.pop_bits(len(path))
@@ -101,7 +103,7 @@ def lookup_bits(table, unpacker):
     raise Exception('data not found')
 
 
-def build_tree(data):
+def _build_tree(data):
     count_map = {}
 
     for byte in data:
@@ -127,12 +129,12 @@ def build_tree(data):
     return counter_list.pop()
 
 
-def build_table(node, table, path=[]):
+def _build_table(node, table, path=[]):
     if node.left == None and node.right == None:  # left
         table[node.byte] = path
     else:
-        build_table(node.left, table, path + [0])
-        build_table(node.right, table, path + [1])
+        _build_table(node.left, table, path + [0])
+        _build_table(node.right, table, path + [1])
 
 
 if __name__ == "__main__":
@@ -143,4 +145,4 @@ if __name__ == "__main__":
         output_bytes = compress(bytes(sys.stdin.read(), "utf-8"))
         sys.stdout.buffer.write(output_bytes)
     else:
-        print(decompress(bytes(sys.stdin.buffer.read())))
+        sys.stdout.write(decompress(bytes(sys.stdin.buffer.read())))

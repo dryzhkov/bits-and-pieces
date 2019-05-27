@@ -39,12 +39,12 @@ class Unpacker:
         self.bits.frombytes(byte_data)
 
     def int32(self):
-        return self.bit_to_int(32)
+        return self._bit_to_int(32)
 
     def int8(self):
-        return self.bit_to_int(8)
+        return self._bit_to_int(8)
 
-    def bit_to_int(self, bit_count):
+    def _bit_to_int(self, bit_count):
         res = 0
         bits = self.pop_bits(bit_count)
         bits.reverse()
