@@ -1,4 +1,4 @@
-### Data compressor that uses the Huffman coding algroright to compress and decompress text.
+### Data compressor that uses Huffman coding algorithm to compress and decompress text.
 
 drzip.py - contains main logic for compression
 
