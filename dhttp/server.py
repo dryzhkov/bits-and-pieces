@@ -2,6 +2,7 @@
 """Simple HTTP server that uses thread pool based architecture
 """
 import socket
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Server:
@@ -10,15 +11,20 @@ class Server:
         self._port = port
 
     def start(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         addr = (self._host, self._port)
-        sock.bind(addr)
-        sock.listen()
+        s.bind(addr)
+        s.listen()
 
         print("server accepting connections at: " +
               self._host + ":" + str(self._port))
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            executor.submit(self._serve, s)
+
+    def _serve(self, s):
         while 1:
-            conn, _ = sock.accept()
+            conn, _ = s.accept()
             _ = Request.readFrom(conn)
             conn.close()
 
