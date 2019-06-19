@@ -12,7 +12,7 @@ import subprocess
 
 class Server:
     PROTO_VERSION = "HTTP1.1"
-    _threadExecutor = None
+    _futures = []
 
     def __init__(self, host, port):
         self._host = host
@@ -28,9 +28,12 @@ class Server:
         print("server accepting connections at {}:{}... \npress ctrl+c to exit.".format(
             self._host, str(self._port)))
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            self._threadExecutor = executor
-            executor.submit(self._serve, s)
+        # for multi threading comment this line one and uncomment 4 lines below it
+        self._serve(s)
+        # with ThreadPoolExecutor(max_workers=4) as executor:
+        #     for _ in range(4):
+        #         self._futures.append(executor.submit(self._serve, s))
+        #     # [print(i.running()) for i in self._futures]
 
     def _serve(self, s):
         while 1:
