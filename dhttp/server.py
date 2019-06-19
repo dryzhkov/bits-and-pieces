@@ -7,15 +7,12 @@ from pathlib import Path
 import os
 import signal
 import sys
-
-
-def signal_handler(sig, frame):
-    print('exiting.')
-    sys.exit(0)
+import subprocess
 
 
 class Server:
     PROTO_VERSION = "HTTP1.1"
+    _threadExecutor = None
 
     def __init__(self, host, port):
         self._host = host
@@ -27,11 +24,12 @@ class Server:
         s.bind(addr)
         s.listen()
 
-        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGINT, self.signal_handler)
         print("server accepting connections at {}:{}... \npress ctrl+c to exit.".format(
             self._host, str(self._port)))
 
         with ThreadPoolExecutor(max_workers=4) as executor:
+            self._threadExecutor = executor
             executor.submit(self._serve, s)
 
     def _serve(self, s):
@@ -48,18 +46,36 @@ class Server:
             path = Path(absPath)
             if path.is_file():
                 response = "{} 200 Ok\r\n".format(self.PROTO_VERSION)
-                with open(absPath, 'r') as f:
-                    content = f.read()
-                    response += "Content-Type: text/html; charset=us-ascii\r\n"
-                    response += "Content-Length: {}\r\n\r\n".format(
-                        len(content))
-                    response += content
+
+                if os.access(absPath, os.X_OK):
+                    # file is executable, run it and return output to client
+                    (res_code, output) = subprocess.getstatusoutput(absPath)
+                    if res_code == 0:
+                        response += "Content-Type: text; charset=us-ascii\r\n"
+                        response += "Content-Length: {}\r\n\r\n".format(
+                            len(output))
+                        response += output
+                    else:
+                        response = "{} 500 InternalServerError\r\n\r\n".format(
+                            self.PROTO_VERSION)
+                else:
+                    # file isnt executable, return its content
+                    with open(absPath, 'r') as f:
+                        content = f.read()
+                        response += "Content-Type: text/html; charset=us-ascii\r\n"
+                        response += "Content-Length: {}\r\n\r\n".format(
+                            len(content))
+                        response += content
 
                 return response
             else:
                 return "{} 404 NotFound\r\n\r\n".format(self.PROTO_VERSION)
         else:
             return "{} 400 BadRequest\r\n\r\n".format(self.PROTO_VERSION)
+
+    def signal_handler(self, sig, frame):
+        print('exiting.')
+        sys.exit(0)
 
 
 class Request:
